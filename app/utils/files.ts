@@ -1,7 +1,9 @@
 import invariant from "invariant";
 import { AttachmentPreset } from "@shared/types";
+import { CSRF } from "@shared/constants";
 import { dataUrlToBlob } from "@shared/utils/files";
 import { client } from "./ApiClient";
+import { getCSRFToken } from "./csrf";
 import Logger from "./Logger";
 
 type UploadOptions = {
@@ -114,6 +116,14 @@ export const uploadFile = async (
       for (const key in data.form) {
         formData.append(key, data.form[key]);
       }
+
+      // The signing response embedded the token as it was then, but safe
+      // requests rotate the cookie. Read it again at submission time so the
+      // double-submit check matches the cookie sent with this request.
+      if (data.form && CSRF.fieldName in data.form) {
+        formData.set(CSRF.fieldName, getCSRFToken());
+      }
+
       // @ts-expect-error ts-migrate(2339) FIXME: Property 'blob' does not exist on type 'File | Blo...
       if (file.blob) {
         // @ts-expect-error ts-migrate(2339) FIXME: Property 'file' does not exist on type 'File | Blo...
